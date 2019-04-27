@@ -24,6 +24,7 @@ sudo make install
 ## Installation
 ```bash
 git clone https://github.com/ryck/MMM-DHT-Sensor.git
+git clone https://github.com/adafruit/Adafruit_Python_DHT
 cd MMM-DHT-Sensor
 npm install
 ```
