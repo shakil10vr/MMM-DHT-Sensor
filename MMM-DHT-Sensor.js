@@ -34,7 +34,7 @@ Module.register("MMM-DHT-Sensor", {
 
   //Define header for module.
   getHeader: function() {
-    return this.config.header;
+    return this.data.header;
   },
 
   // updateSensorData
