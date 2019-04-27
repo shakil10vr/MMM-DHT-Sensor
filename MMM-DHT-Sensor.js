@@ -3,6 +3,8 @@
  *
  * By Ricardo Gonzalez http://www.github.com/ryck/MMM-DHT-Sensor
  * MIT Licensed.
+ * 
+ * Edited by Tanveer Rahman
  */
 
 Module.register("MMM-DHT-Sensor", {
@@ -29,7 +31,7 @@ Module.register("MMM-DHT-Sensor", {
   },
 
   getStyles: function() {
-    return ["MMM-DHT-Sensor.css", "font-awesome.css"];
+    return ["MMM-DHT-Sensor.css", "font-awesome.css", "weather-icons.css"];
   },
 
   //Define header for module.
@@ -63,21 +65,41 @@ Module.register("MMM-DHT-Sensor", {
   },
 
   processSensorData: function(data) {
+	var self = this;
     if (typeof data !== "undefined" && data !== null) {
       if(this.config.debug) {
         Log.info(data);
       }
       this.loaded = true;
       // Convert C to F
+	  var RH = data.humidity;
+	  var Temp = data.temperature;
+	  var T = Temp * 9/5 + 32;
       if (this.config.units === 'imperial') {
-        this.temperature = data.temperature * 9/5 + 32;
+        this.temperature = T;
       } else {
-        this.temperature = data.temperature;
+        this.temperature = Temp;
       }
       if (typeof this.temperature !== "undefined" && this.temperature !== null)  {
         this.sendNotification("INDOOR_TEMPERATURE", this.temperature);
       }
-      this.humidity = data.humidity;
+	  var c1 = -42.379;
+	  var c2 = 2.04901523;
+      var c3 = 10.14333127;
+      var c4 = -0.22475541;
+      var c5 = -6.83783e-3;
+      var c6 = -5.481717e-2;
+      var c7 = 1.22874e-3;
+      var c8 = 8.5282e-4;
+      var c9 = -1.99e-6;
+	  // try simplified formula first (used for HI < 80)
+	  var HI = 0.5 * (T + 61. + (T - 68.) * 1.2 + RH * 0.094);
+	  if (HI >= 80){
+		  HI = c1 + c2 * T + c3 * RH + c4 * T * RH 
+				+ c5 * T * T + c6 * RH * RH + c7 * T * T * RH 
+				+ c8 * T * RH * RH + c9 * T * T * RH * RH;
+	  }
+      this.humidity = Math.round((HI - 32) * 5/9);
       if (typeof this.humidity !== "undefined" && this.humidity !== null)  {
         this.sendNotification("INDOOR_HUMIDITY", this.humidity);
       }      
@@ -87,6 +109,7 @@ Module.register("MMM-DHT-Sensor", {
 
   // Override dom generator.
   getDom: function() {
+	var self = this;
     var wrapper = document.createElement("div");
 
     if (this.config.sensorPin === "") {
@@ -109,31 +132,31 @@ Module.register("MMM-DHT-Sensor", {
 
     // Start building table.
     var dataTable = document.createElement("table");
-    dataTable.className = "small";
+    dataTable.className = "large";
 
     var tempRow = document.createElement("tr");;
     var humidRow = document.createElement("tr");;
 
     if (this.temperature != null && this.humidity != null) {
       var temperatureCell = document.createElement("td");
-      temperatureCell.className = "data temperature ";
+      temperatureCell.className = "data temperature";
 
       // Get a 40C ratio value to set the thermometer icon scale.
-      var temperatureRatio = this.temperature / this.config.relativeScale;
+      // var temperatureRatio = this.temperature / this.config.relativeScale;
 
       var degreeLabel = "";
       switch (this.config.units ) {
         case "metric":
-          degreeLabel = "C";
+          degreeLabel = "°";
           break;
         case "imperial":
           degreeLabel = "F";
           break;
         case "default":
-          degreeLabel = "C";
+          degreeLabel = "°";
           break;
       }
-
+      /*
       // Asign themomether icon.
       switch (true) {
         case temperatureRatio < 0:
@@ -166,14 +189,22 @@ Module.register("MMM-DHT-Sensor", {
           }
           temperatureCell.className += "thermometer-full";
           break;
-      }
-
-      temperatureCell.innerHTML = " " + this.temperature + " " + degreeLabel;
+      } */
+	  var temp = document.createElement("div");
+		temp.className = "large";
+		tempRow.appendChild(temp);
+	  var tempIcon = document.createElement("span");
+	  tempIcon.className = "wi wi-thermometer";
+	  tempRow.appendChild(tempIcon);
+	  temperatureCell.className = "bright light";
+      temperatureCell.innerHTML = (this.temperature + degreeLabel).replace(/\s/g, '');
       tempRow.appendChild(temperatureCell);
-
+	  
+	  var humid = document.createElement("div");
+		humidRow.appendChild(humid);
       var humidityCell = document.createElement("td");
-      humidityCell.className = "data humidity";
-      humidityCell.innerHTML = " " + this.humidity + " %";
+      humidityCell.className = "medium dimmed";
+      humidityCell.innerHTML = " Feels " + this.humidity + "°";
       humidRow.appendChild(humidityCell);
 
       dataTable.appendChild(tempRow);
@@ -184,8 +215,9 @@ Module.register("MMM-DHT-Sensor", {
 
       var messageCell = document.createElement("td");
       messageCell.innerHTML = "No data returned";
-      messageCell.className = "bright";
+      messageCell.className = "bright medium";
       row1.appendChild(messageCell);
+	  this.start();
     }
     wrapper.appendChild(dataTable);
     return wrapper;
